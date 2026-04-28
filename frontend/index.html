@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Social Media Friend List</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f1a;
+      color: #e0e0f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #1a1a2e;
+      border: 1px solid #2e2e50;
+      border-radius: 20px;
+      width: 100%;
+      max-width: 500px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #a78bfa;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle { color: #6b6b9a; font-size: 0.85rem; margin-bottom: 28px; }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid #2e2e50;
+      background: #0f0f1a;
+      color: #e0e0f0;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus { border-color: #a78bfa; }
+
+    button {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-add {
+      background: #7c3aed;
+      color: white;
+    }
+    .btn-add:hover { background: #6d28d9; transform: translateY(-1px); }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #6b6b9a;
+      margin-bottom: 14px;
+    }
+
+    .friend-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .friend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0f0f1a;
+      border: 1px solid #2e2e50;
+      border-radius: 12px;
+      padding: 14px 16px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .friend-left { display: flex; align-items: center; gap: 12px; }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c3aed, #a78bfa);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .friend-name { font-weight: 500; font-size: 0.95rem; }
+    .friend-date { font-size: 0.72rem; color: #6b6b9a; margin-top: 2px; }
+
+    .btn-remove {
+      background: transparent;
+      border: 1px solid #3d1a1a;
+      color: #f87171;
+      padding: 7px 13px;
+      font-size: 0.8rem;
+      border-radius: 8px;
+    }
+    .btn-remove:hover { background: #3d1a1a; }
+
+    .empty {
+      text-align: center;
+      color: #4a4a6a;
+      padding: 32px 0;
+      font-size: 0.9rem;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: transform 0.3s ease, opacity 0.3s;
+      opacity: 0;
+      z-index: 999;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast.success { background: #14532d; color: #4ade80; border: 1px solid #166534; }
+    .toast.error   { background: #450a0a; color: #f87171; border: 1px solid #7f1d1d; }
+
+    .count-badge {
+      display: inline-block;
+      background: #2e2e50;
+      color: #a78bfa;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 99px;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>👥 Friend List</h1>
+  <p class="subtitle">Social Media Friend Manager</p>
+
+  <div class="input-row">
+    <input type="text" id="nameInput" placeholder="Enter friend's name..." maxlength="50" />
+    <button class="btn-add" onclick="addFriend()">Add</button>
+  </div>
+
+  <div class="section-label">
+    Your Friends <span class="count-badge" id="count">0</span>
+  </div>
+
+  <div class="friend-list" id="friendList">
+    <div class="empty">No friends added yet.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = "http://localhost:3001";
+
+  async function loadFriends() {
+    try {
+      const res = await fetch(`${API}/friends`);
+      const friends = await res.json();
+      render(friends);
+    } catch {
+      showToast("Cannot connect to server.", "error");
+    }
+  }
+
+  function render(friends) {
+    const list = document.getElementById("friendList");
+    document.getElementById("count").textContent = friends.length;
+    if (!friends.length) {
+      list.innerHTML = '<div class="empty">No friends added yet.</div>';
+      return;
+    }
+    list.innerHTML = friends.map(f => `
+      <div class="friend-item" id="fi-${f.id}">
+        <div class="friend-left">
+          <div class="avatar">${f.name[0].toUpperCase()}</div>
+          <div>
+            <div class="friend-name">${escape(f.name)}</div>
+            <div class="friend-date">${new Date(f.added_at).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" })}</div>
+          </div>
+        </div>
+        <button class="btn-remove" onclick="removeFriend('${f.name}')">Remove</button>
+      </div>
+    `).join("");
+  }
+
+  function escape(str) {
+    const d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  async function addFriend() {
+    const input = document.getElementById("nameInput");
+    const name = input.value.trim();
+    if (!name) return showToast("Please enter a name.", "error");
+
+    try {
+      const res = await fetch(`${API}/friends`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (!res.ok) return showToast(data.error, "error");
+      input.value = "";
+      showToast(`${name} added successfully!`, "success");
+      loadFriends();
+    } catch {
+      showToast("Server error.", "error");
+    }
+  }
+
+  async function removeFriend(name) {
+    try {
+      const res = await fetch(`${API}/friends/${encodeURIComponent(name)}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) return showToast(data.error, "error");
+      showToast(`${name} removed.`, "success");
+      loadFriends();
+    } catch {
+      showToast("Server error.", "error");
+    }
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.className = "toast", 3000);
+  }
+
+  // Press Enter to add
+  document.getElementById("nameInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") addFriend();
+  });
+
+  loadFriends();
+</script>
+</body>
+</html>
